@@ -1,27 +1,32 @@
 """Recoll."""
 import os
+import inspect
 from sys import platform
 import traceback
 from pathlib import Path
 from collections import Counter
+import mimetypes
 
 # TODO: Check if this fails and return a more comprehensive error message for the user
 from recoll import recoll
 
-import albertv0 as v0
+from albert import *
 
 __iid__ = "PythonInterface/v0.2"
 __prettyname__ = "Recoll"
-__version__ = "0.1.0"
-# __trigger__ = "rc " # Use this if you want it to be only triggered by rc <query>
-__author__ = "Gerard Simons"
+__title__ = "Recoll for Albert"
+__version__ = "0.1.1"
+#__trigger__ = "rc " # Use this if you want it to be only triggered by rc <query>
+__authors__ = "Gerard Simons"
 __dependencies__ = []
 __homepage__ = "https://github.com/gerardsimons/recoll-albert/blob/master/recoll/recoll"
 
-icon_path = str(Path(__file__).parent / "recoll")
-cache_path = Path(v0.cacheLocation()) / "recoll"
-config_path = Path(v0.configLocation()) / "recoll"
-data_path = Path(v0.dataLocation()) / "recoll"
+HOME_DIR = os.environ["HOME"]
+
+icon_path = Path.home()  / "recoll"
+cache_path = Path.home()   / "recoll"
+config_path = Path.home() / "recoll"
+data_path = Path.home() / "recoll"
 dev_mode = True
 
 # If set to to true it removes duplicate documents hits that share the same URL, such as epubs or other archives.
@@ -77,22 +82,22 @@ def path_from_url(url: str) -> str:
 
 def get_open_dir_action(dir: str):
     if platform == "linux" or platform == "linux2":
-        return v0.ProcAction(text=REVEAL_IN_FILE_BROWSER, commandline=["xdg-open", dir])
+        return ProcAction(text=REVEAL_IN_FILE_BROWSER, commandline=["xdg-open", dir])
     elif platform == "darwin":
-        return v0.ProcAction(text=REVEAL_IN_FILE_BROWSER, commandline=["open", dir])
+        return ProcAction(text=REVEAL_IN_FILE_BROWSER, commandline=["open", dir])
     elif platform == "win32": # From https://stackoverflow.com/a/2878744/916382
-        return v0.FuncAction(text=REVEAL_IN_FILE_BROWSER, callable=lambda : os.startfile(dir))
+        return FuncAction(text=REVEAL_IN_FILE_BROWSER, callable=lambda : os.startfile(dir))
 
 
 def doc_to_icon_path(doc) -> str:
     """ Attempts to convert a mime type to a text string that is accepted by """
     mime_str = getattr(doc, "mtype", None)
     if not mime_str:
-        return v0.iconLookup("unknown")
+        return albert.iconLookup("unknown")
     mime_str = mime_str.replace("/", "-")
-    icon_path = v0.iconLookup(mime_str)
+    icon_path = iconLookup(mime_str)
     if not icon_path:
-        icon_path = v0.iconLookup("unknown")
+        icon_path = iconLookup("unknown")
     return icon_path
 
 
@@ -135,23 +140,29 @@ def recoll_docs_as_items(docs: list):
     for doc in docs:
         path = path_from_url(doc.url) # The path is not always given as an attribute by recoll doc
         dir = os.path.dirname(path)
+        file_extension = Path(path).suffix # Get the file extension and work out the mimetype
+        mime_type = mimetypes.types_map[file_extension]
+
         dir_open = get_open_dir_action(dir)
 
         if path:
-            actions = [v0.UrlAction(OPEN_WITH_DEFAULT_APP, doc.url)]
+            actions=[
+                    UrlAction(
+                        OPEN_WITH_DEFAULT_APP, 
+                        doc.url),
+                    ClipAction(text=COPY_PATH_CLIPBOARD,
+                               clipboardText=path),
+                    TermAction(text=COPY_FILE_CLIPBOARD,
+                                script="xclip -selection clipboard -t " + mime_type + " -i '" + path + "'",
+                                behavior=TermAction.CloseBehavior(0),
+                                cwd="/usr/bin")
+                ]
+
             if dir_open:
                 actions.append(dir_open)
 
-            actions.extend([
-                # NOTE: Termaction requires a commandline arg, if you pass it empty list nothing happens, so we give it empty string
-                v0.TermAction(text=OPEN_TERMINAL_AT_THIS_PATH, commandline=[""],
-                          behavior=v0.TermAction.CloseBehavior.DoNotClose, cwd=dir),
-                # IMPORTANT: FIXME: it should be only read when the user clicks it I feel. A lot of IO could happen just to create these actions
-                v0.ClipAction(COPY_FILE_CLIPBOARD, open(path, 'rb').read()),
-                v0.ClipAction(COPY_PATH_CLIPBOARD, path)])
-
             # Add the item
-            items.append(v0.Item(
+            items.append(Item(
                 id=__prettyname__,
                 icon=doc_to_icon_path(doc),
                 text=doc.filename,
@@ -186,12 +197,12 @@ def handleQuery(query) -> list:
 
         results.insert(
             0,
-            v0.Item(
+            albert.Item(
                 id=__prettyname__,
                 icon=icon_path,
                 text="Something went wrong! Press [ENTER] to copy error and report it",
                 actions=[
-                    v0.ClipAction(
+                    albert.ClipAction(
                         f"Copy error - report it to {__homepage__[8:]}",
                         f"{traceback.format_exc()}",
                     )
