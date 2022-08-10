@@ -141,7 +141,7 @@ def recoll_docs_as_items(docs: list):
         path = path_from_url(doc.url) # The path is not always given as an attribute by recoll doc
         dir = os.path.dirname(path)
         file_extension = Path(path).suffix # Get the file extension and work out the mimetype
-        mime_type = mimetypes.guess_type(file_extension)[0]
+        mime_type = str(mimetypes.guess_type(file_extension)[0])
 
         dir_open = get_open_dir_action(dir)
 
