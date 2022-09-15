@@ -16,7 +16,7 @@ __iid__ = "PythonInterface/v0.2"
 __prettyname__ = "Recoll"
 __title__ = "Recoll for Albert"
 __version__ = "0.1.1"
-#__trigger__ = "rc " # Use this if you want it to be only triggered by rc <query>
+__triggers__ = "rc " # Use this if you want it to be only triggered by rc <query>
 __authors__ = "Gerard Simons"
 __dependencies__ = []
 __homepage__ = "https://github.com/gerardsimons/recoll-albert/blob/master/recoll/recoll"
@@ -178,7 +178,7 @@ def handleQuery(query) -> list:
     results = []
 
     try:
-        if __trigger__  and not query.isTriggered:
+        if __triggers__  and not query.isTriggered:
             return []
         # be backwards compatible with v0.2
         if "disableSort" in dir(query):
@@ -237,8 +237,8 @@ def setup(query):
     results = []
     return results
 
-# In case the __trigger__ was not set at all we set it to the empty string
+# In case the __triggers__ was not set at all we set it to the empty string
 try:
-    __trigger__
+    __triggers__
 except NameError:
-    __trigger__ = ""
+    __triggers__ = ""
